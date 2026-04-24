@@ -1,3 +1,11 @@
+## 🚀 How to Run
+
+1. Go to backend folder  
+2. Run:
+   python app.py  
+
+3. Open browser:
+   http://localhost:5000
 # 🚀 EventFlow - Smart Event Booking System
 
 > A modern web application to manage and book events with admin control.
