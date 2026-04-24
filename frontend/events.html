@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventFlow - Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>EF</text></svg>">
+</head>
+<body>
+
+    <!-- Dashboard Page -->
+    <div class="dashboard-page">
+        
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="logo-container">
+                <div class="logo-icon">EF</div>
+                <div class="logo-text">EventFlow</div>
+            </div>
+            <button class="btn btn-logout" onclick="logout()">Logout</button>
+        </header>
+
+        <!-- Main Content -->
+        <main class="dashboard-main">
+            <h1 class="dashboard-title">Your <span>Events</span></h1>
+            
+            <!-- Admin Layout (Split Screen) -->
+            <div class="admin-layout" id="adminLayout">
+                
+                <!-- Left: Events Grid -->
+                <div class="events-grid" id="events"></div>
+                
+                <!-- Right: Admin Sidebar -->
+                <aside class="admin-sidebar" id="adminSection" style="display: none;">
+                    
+                    <!-- Add Event Panel -->
+                    <div class="admin-panel">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add New Event
+                        </h3>
+                        <div class="admin-form" id="addEventBox">
+                            <input type="text" id="title" placeholder="Event Title">
+                            <input type="date" id="date">
+                            <input type="text" id="location" placeholder="Location">
+                            <input type="number" id="seats" placeholder="Total Seats" min="1">
+                            <button class="btn btn-primary" onclick="addEvent()">Add Event</button>
+                        </div>
+                    </div>
+
+                    <!-- Booking Requests Panel -->
+                    <div class="admin-panel">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Booking Requests
+                        </h3>
+                        <div class="booking-requests" id="bookingBox">
+                            <p class="no-requests">No pending requests</p>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            &copy; 2026 EventFlow &middot; Built by Team Rohith
+        </footer>
+    </div>
+
+    <script src="/static/js/event.js"></script>
+</body>
+</html>

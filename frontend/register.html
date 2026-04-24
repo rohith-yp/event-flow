@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventFlow - Register</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>EF</text></svg>">
+</head>
+<body>
+
+    <!-- Auth Page -->
+    <div class="auth-page">
+        
+        <!-- Logo & Branding -->
+        <div class="auth-logo">
+            <div class="logo-container" style="justify-content: center;">
+                <div class="logo-icon">EF</div>
+                <div class="logo-text">EventFlow</div>
+            </div>
+            <p class="tagline">Smart Event Booking Platform</p>
+        </div>
+
+        <!-- Glass Card -->
+        <div class="glass-card auth-card">
+            <h2>Create Account</h2>
+            
+            <form onsubmit="event.preventDefault(); register();">
+                <div class="form-group">
+                    <input type="text" id="name" placeholder="Full Name" minlength="2" autocomplete="name" required>
+                    <small class="form-error" id="nameError"></small>
+                </div>
+                
+                <div class="form-group">
+                    <input type="email" id="email" placeholder="Email Address" autocomplete="email" required>
+                    <small class="form-error" id="emailError"></small>
+                </div>
+                
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="Password" minlength="6" autocomplete="new-password" required>
+                    <small class="form-error" id="passwordError"></small>
+                </div>
+
+                <div class="form-group">
+                    <input type="password" id="confirmPassword" placeholder="Confirm Password" minlength="6" autocomplete="new-password" required>
+                    <small class="form-error" id="confirmPasswordError"></small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+            
+            <p class="auth-footer">
+                Already have an account? <a href="/">Login</a>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <p class="auth-footer" style="margin-top: 24px;">
+            &copy; 2026 EventFlow &middot; Built by Team Rohith
+        </p>
+    </div>
+
+    <script src="/static/js/register.js"></script>
+</body>
+</html>

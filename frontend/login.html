@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventFlow - Login</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>EF</text></svg>">
+</head>
+<body>
+
+    <!-- Auth Page -->
+    <div class="auth-page">
+        
+        <!-- Logo & Branding -->
+        <div class="auth-logo">
+            <div class="logo-container" style="justify-content: center;">
+                <div class="logo-icon">EF</div>
+                <div class="logo-text">EventFlow</div>
+            </div>
+            <p class="tagline">Smart Event Booking Platform</p>
+        </div>
+
+        <!-- Glass Card -->
+        <div class="glass-card auth-card">
+            <h2>Welcome Back</h2>
+            
+            <form onsubmit="event.preventDefault(); login();">
+                <div class="form-group">
+                    <input type="email" id="email" placeholder="Email Address" required>
+                </div>
+                
+                <div class="form-group">
+                    <input type="password" id="password" placeholder="Password" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+            
+            <p class="auth-footer">
+                New user? <a href="/register_page">Create Account</a>
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <p class="auth-footer" style="margin-top: 24px;">
+            &copy; 2026 EventFlow &middot; Built by Team Rohith
+        </p>
+    </div>
+
+    <script src="/static/js/login.js"></script>
+</body>
+</html>
