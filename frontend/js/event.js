@@ -3,19 +3,92 @@
 // =====================
 const role = localStorage.getItem("role");
 const email = localStorage.getItem("email");
+let activeCategory = "all";
+
+function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+    }[char]));
+}
+
+const eventCategories = [
+    {
+        id: "all",
+        label: "All",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>`
+    },
+    {
+        id: "movies",
+        label: "Movies",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16m10-16v16M3 8h18M3 16h18M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>`
+    },
+    {
+        id: "music",
+        label: "Music",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-2v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-2c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2z" /></svg>`
+    },
+    {
+        id: "sports",
+        label: "Sports",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="9" stroke-width="2" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 9c4 1 10 1 14 0M5 15c4-1 10-1 14 0M12 3c2 4 2 14 0 18" /></svg>`
+    },
+    {
+        id: "tech",
+        label: "Tech",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect x="5" y="4" width="14" height="16" rx="2" stroke-width="2" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9h6M9 13h6M12 17h.01" /></svg>`
+    },
+    {
+        id: "hackathons",
+        label: "Hackathons",
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l-3 3 3 3M16 9l3 3-3 3M14 5l-4 14" /></svg>`
+    }
+];
+
+function getCategory(categoryId) {
+    return eventCategories.find(category => category.id === categoryId) || eventCategories[1];
+}
+
+function renderCategoryFilter() {
+    const filter = document.getElementById("categoryFilter");
+    if (!filter) return;
+
+    filter.innerHTML = eventCategories.map(category => `
+        <button class="category-chip ${activeCategory === category.id ? "active" : ""}" onclick="setCategory('${category.id}')">
+            ${category.icon}
+            <span>${category.label}</span>
+        </button>
+    `).join("");
+}
+
+function setCategory(categoryId) {
+    activeCategory = categoryId;
+    renderCategoryFilter();
+    loadEvents();
+}
 
 // =====================
 // LOAD EVENTS
 // =====================
 function loadEvents() {
+    if (!role || !email) {
+        window.location.href = "/";
+        return;
+    }
 
     // Show / Hide Admin Panel
     const adminSection = document.getElementById("adminSection");
+    const userBookingsSection = document.getElementById("userBookingsSection");
 
     if (role === "admin") {
         adminSection.style.display = "flex";
+        userBookingsSection.style.display = "none";
     } else {
         adminSection.style.display = "none";
+        userBookingsSection.style.display = "block";
     }
 
     fetch("/events")
@@ -23,8 +96,12 @@ function loadEvents() {
     .then(eventsData => {
 
         let html = "";
+        const visibleEvents = activeCategory === "all"
+            ? eventsData
+            : eventsData.filter(e => (e.category || "movies") === activeCategory);
 
-        eventsData.forEach(e => {
+        visibleEvents.forEach(e => {
+            const category = getCategory(e.category || "movies");
 
             // Format date nicely
             const eventDate = new Date(e.date).toLocaleDateString('en-US', {
@@ -36,7 +113,11 @@ function loadEvents() {
 
             html += `
             <div class="event-card">
-                <h3>${e.title}</h3>
+                <div class="event-category-badge">
+                    ${category.icon}
+                    <span>${category.label}</span>
+                </div>
+                <h3>${escapeHtml(e.title)}</h3>
                 
                 <div class="event-info">
                     <div class="event-info-item">
@@ -44,7 +125,7 @@ function loadEvents() {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        <span>${e.location}</span>
+                        <span>${escapeHtml(e.location)}</span>
                     </div>
                     <div class="event-info-item">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,7 +155,7 @@ function loadEvents() {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
-                        Only ${e.available_seats} seats left!
+                        Only few seats left
                     </div>
                 ` : ""}
 
@@ -106,11 +187,14 @@ function loadEvents() {
         });
 
         document.getElementById("events").innerHTML =
-            html || '<p style="text-align: center; color: var(--text-muted); grid-column: 1/-1;">No events available</p>';
+            html || '<p style="text-align: center; color: var(--text-muted); grid-column: 1/-1;">No events available in this section</p>';
 
         // Load admin panels
         if (role === "admin") {
+            loadAdminStats();
             loadBookingRequests();
+        } else {
+            loadMyBookings();
         }
 
     })
@@ -140,22 +224,13 @@ function loadBookingRequests() {
             bookingHTML += `
             <div class="booking-request-card">
                 <div class="booking-request-info">
-                    <p><strong>User:</strong> ${b.user_email}</p>
-                    <p><strong>Event:</strong> ${b.event_name}</p>
-                    <p><strong>Seats:</strong> ${b.seats}</p>
-                </div>
-                <div class="seat-decision-grid">
-                    <label>
-                        <span>Approve</span>
-                        <input type="number" id="approve_${b.id}" min="0" max="${b.seats}" value="${b.seats}" oninput="syncSeatDecision(${b.id}, ${b.seats}, 'approve')">
-                    </label>
-                    <label>
-                        <span>Reject</span>
-                        <input type="number" id="reject_${b.id}" min="0" max="${b.seats}" value="0" oninput="syncSeatDecision(${b.id}, ${b.seats}, 'reject')">
-                    </label>
+                    <p><strong>User:</strong> ${escapeHtml(b.user_email)}</p>
+                    <p><strong>Event:</strong> ${escapeHtml(b.event_name)}</p>
+                    <p><strong>Seats Requested:</strong> ${b.seats}</p>
+                    <p><strong>Approval:</strong> Current available seats will be confirmed automatically.</p>
                 </div>
                 <div class="booking-actions">
-                    <button class="btn btn-success" onclick="approve(${b.id}, ${b.seats})">
+                    <button class="btn btn-success" onclick="approve(${b.id})">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
@@ -177,23 +252,69 @@ function loadBookingRequests() {
 }
 
 // =====================
-// SEAT DECISION SYNC
+// ADMIN STATS
 // =====================
-function syncSeatDecision(id, requestedSeats, changedField) {
-    const approveInput = document.getElementById(`approve_${id}`);
-    const rejectInput = document.getElementById(`reject_${id}`);
+function loadAdminStats() {
+    if (role !== "admin") return;
 
-    let changedValue = parseInt(changedField === "approve" ? approveInput.value : rejectInput.value);
-    if (Number.isNaN(changedValue)) changedValue = 0;
-    changedValue = Math.max(0, Math.min(requestedSeats, changedValue));
+    fetch("/admin_stats")
+    .then(res => res.json())
+    .then(stats => {
+        const adminStats = document.getElementById("adminStats");
+        if (!adminStats) return;
 
-    if (changedField === "approve") {
-        approveInput.value = changedValue;
-        rejectInput.value = requestedSeats - changedValue;
-    } else {
-        rejectInput.value = changedValue;
-        approveInput.value = requestedSeats - changedValue;
-    }
+        adminStats.innerHTML = `
+            <div class="stat-box"><span>Total</span><strong>${stats.total || 0}</strong></div>
+            <div class="stat-box approved"><span>Approved</span><strong>${stats.approved || 0}</strong></div>
+            <div class="stat-box pending"><span>Pending</span><strong>${stats.pending || 0}</strong></div>
+            <div class="stat-box rejected"><span>Rejected</span><strong>${stats.rejected || 0}</strong></div>
+        `;
+    })
+    .catch(err => console.log("Error loading admin stats:", err));
+}
+
+// =====================
+// MY BOOKINGS (USER)
+// =====================
+function loadMyBookings() {
+    if (role !== "user" || !email) return;
+
+    fetch(`/my_bookings?email=${encodeURIComponent(email)}`)
+    .then(res => res.json())
+    .then(bookings => {
+        const myBookings = document.getElementById("myBookings");
+        if (!myBookings) return;
+
+        if (!bookings.length) {
+            myBookings.innerHTML = '<p class="no-requests">No bookings yet</p>';
+            return;
+        }
+
+        myBookings.innerHTML = bookings.map(booking => {
+            const bookingDate = booking.booking_date
+                ? new Date(booking.booking_date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                })
+                : "Not available";
+
+            return `
+                <div class="booking-history-card">
+                    <div>
+                        <h3>${escapeHtml(booking.title)}</h3>
+                        <p>Date: ${bookingDate}</p>
+                    </div>
+                    <div class="booking-history-details">
+                        <span>Requested: <strong>${booking.seats}</strong></span>
+                        <span>Approved: <strong>${booking.approved_seats || 0}</strong></span>
+                        <span class="status-pill ${booking.status}">${booking.status}</span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+    })
+    .catch(err => console.log("Error loading booking history:", err));
 }
 
 // =====================
@@ -220,6 +341,7 @@ function book(id) {
     .then(data => {
         alert(data.message || data.error);
         loadEvents();
+        loadMyBookings();
     })
     .catch(err => {
         console.error(err);
@@ -236,8 +358,9 @@ function addEvent() {
     let date = document.getElementById("date").value;
     let location = document.getElementById("location").value;
     let seats = document.getElementById("seats").value;
+    let category = document.getElementById("category").value;
 
-    if (!title || !date || !location || !seats) {
+    if (!category || !title || !date || !location || !seats) {
         alert("Please fill all fields");
         return;
     }
@@ -249,18 +372,22 @@ function addEvent() {
             title,
             date,
             location,
-            seats: parseInt(seats)
+            seats: parseInt(seats),
+            category
         })
     })
     .then(res => res.json())
     .then(data => {
-        alert(data.message);
+        alert(data.message || data.error);
+        if (data.error) return;
         // Clear form
         document.getElementById("title").value = "";
         document.getElementById("date").value = "";
         document.getElementById("location").value = "";
         document.getElementById("seats").value = "";
+        document.getElementById("category").value = "";
         loadEvents();
+        loadAdminStats();
     })
     .catch(err => {
         console.error(err);
@@ -281,6 +408,7 @@ function deleteEvent(id) {
     .then(data => {
         alert(data.message || data.error);
         loadEvents();
+        loadAdminStats();
     })
     .catch(err => {
         console.error(err);
@@ -291,28 +419,15 @@ function deleteEvent(id) {
 // =====================
 // APPROVE BOOKING
 // =====================
-function approve(id, requestedSeats) {
-    const approvedSeats = parseInt(document.getElementById(`approve_${id}`).value);
-
-    if (Number.isNaN(approvedSeats) || approvedSeats < 0 || approvedSeats > requestedSeats) {
-        alert("Please enter a valid approved seat count");
-        return;
-    }
-
-    if (approvedSeats === 0) {
-        reject(id);
-        return;
-    }
-
+function approve(id) {
     fetch(`/approve_booking/${id}`, {
-        method: "PUT",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(approvedSeats)
+        method: "PUT"
     })
     .then(res => res.json())
     .then(data => {
         alert(data.message || data.error);
         loadEvents();
+        loadAdminStats();
     })
     .catch(err => {
         console.error(err);
@@ -331,6 +446,7 @@ function reject(id) {
     .then(data => {
         alert(data.message || data.error);
         loadEvents();
+        loadAdminStats();
     })
     .catch(err => {
         console.error(err);
@@ -350,4 +466,7 @@ function logout() {
 // =====================
 // INIT
 // =====================
-document.addEventListener("DOMContentLoaded", loadEvents);
+document.addEventListener("DOMContentLoaded", () => {
+    renderCategoryFilter();
+    loadEvents();
+});

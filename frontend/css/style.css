@@ -353,6 +353,47 @@ a:hover {
     background-clip: text;
 }
 
+/* ================= CATEGORY FILTER ================= */
+.category-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: -12px 0 28px;
+}
+
+.category-chip {
+    min-height: 46px;
+    padding: 10px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.055);
+    color: var(--text-secondary);
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.category-chip svg {
+    width: 19px;
+    height: 19px;
+    color: var(--accent-glow);
+    flex: 0 0 auto;
+}
+
+.category-chip:hover,
+.category-chip.active {
+    color: var(--text-primary);
+    border-color: rgba(0, 212, 255, 0.35);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.24), rgba(0, 212, 255, 0.12));
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+    transform: translateY(-1px);
+}
+
 /* ================= ADMIN LAYOUT ================= */
 .admin-layout {
     display: grid;
@@ -416,6 +457,29 @@ a:hover {
     color: var(--text-primary);
     letter-spacing: -0.01em;
     text-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+.event-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(0, 212, 255, 0.09);
+    border: 1px solid rgba(0, 212, 255, 0.16);
+    color: var(--text-secondary);
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.event-category-badge svg {
+    width: 15px;
+    height: 15px;
+    color: var(--accent-glow);
+    flex: 0 0 auto;
 }
 
 .event-info {
@@ -582,7 +646,8 @@ a:hover {
     gap: 14px;
 }
 
-.admin-form input {
+.admin-form input,
+.admin-form select {
     width: 100%;
     padding: 14px 18px;
     background: rgba(255, 255, 255, 0.05);
@@ -595,13 +660,23 @@ a:hover {
     outline: none;
 }
 
-.admin-form input:focus {
+.admin-form input:focus,
+.admin-form select:focus {
     border-color: var(--accent-glow);
     box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
 }
 
 .admin-form input::placeholder {
     color: var(--text-muted);
+}
+
+.admin-form select {
+    cursor: pointer;
+}
+
+.admin-form select option {
+    color: #111827;
+    background: #ffffff;
 }
 
 /* ================= BOOKING REQUESTS ================= */
@@ -709,6 +784,102 @@ a:hover {
     font-size: 14px;
 }
 
+/* ================= ADMIN STATS & HISTORY ================= */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.stat-box {
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.055);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.stat-box span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.stat-box strong {
+    color: var(--text-primary);
+    font-size: 24px;
+}
+
+.stat-box.approved strong { color: var(--success); }
+.stat-box.pending strong { color: var(--warning); }
+.stat-box.rejected strong { color: var(--danger); }
+
+.user-bookings-section {
+    margin-top: 36px;
+}
+
+.user-bookings-section h2 {
+    font-size: 24px;
+    margin-bottom: 18px;
+}
+
+.booking-history-list {
+    display: grid;
+    gap: 14px;
+}
+
+.booking-history-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px;
+    border-radius: 14px;
+    background: linear-gradient(180deg, rgba(38, 43, 82, 0.98), rgba(25, 29, 59, 0.98));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-premium);
+}
+
+.booking-history-card h3 {
+    font-size: 17px;
+    margin-bottom: 6px;
+}
+
+.booking-history-card p,
+.booking-history-details span {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.booking-history-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.status-pill {
+    padding: 6px 10px;
+    border-radius: 999px;
+    text-transform: capitalize;
+    font-weight: 700;
+}
+
+.status-pill.approved {
+    color: #bbf7d0;
+    background: rgba(16, 185, 129, 0.18);
+}
+
+.status-pill.pending {
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.18);
+}
+
+.status-pill.rejected {
+    color: #fecaca;
+    background: rgba(239, 68, 68, 0.18);
+}
+
 /* ================= FOOTER ================= */
 .dashboard-footer {
     padding: 24px 40px;
@@ -734,6 +905,16 @@ a:hover {
     .dashboard-title {
         font-size: 24px;
     }
+
+    .category-filter {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .category-chip {
+        justify-content: center;
+        padding: 10px 12px;
+    }
     
     .events-grid {
         grid-template-columns: 1fr;
@@ -749,6 +930,14 @@ a:hover {
     
     .booking-actions {
         flex-direction: column;
+    }
+
+    .booking-history-card {
+        flex-direction: column;
+    }
+
+    .booking-history-details {
+        justify-content: flex-start;
     }
 }
 

@@ -43,3 +43,16 @@
         alert("Server error");
     });
 }
+
+function clearLoginFields() {
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+
+    if (emailInput) emailInput.value = "";
+    if (passwordInput) passwordInput.value = "";
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+    clearLoginFields();
+    setTimeout(clearLoginFields, 100);
+});

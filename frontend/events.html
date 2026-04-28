@@ -24,6 +24,8 @@
         <!-- Main Content -->
         <main class="dashboard-main">
             <h1 class="dashboard-title">Your <span>Events</span></h1>
+
+            <div class="category-filter" id="categoryFilter" aria-label="Event categories"></div>
             
             <!-- Admin Layout (Split Screen) -->
             <div class="admin-layout" id="adminLayout">
@@ -33,6 +35,21 @@
                 
                 <!-- Right: Admin Sidebar -->
                 <aside class="admin-sidebar" id="adminSection" style="display: none;">
+                    <!-- Admin Stats Panel -->
+                    <div class="admin-panel">
+                        <h3>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3v18M6 8v13M16 13v8M21 6v15" />
+                            </svg>
+                            Dashboard Stats
+                        </h3>
+                        <div class="stats-grid" id="adminStats">
+                            <div class="stat-box"><span>Total</span><strong>0</strong></div>
+                            <div class="stat-box"><span>Approved</span><strong>0</strong></div>
+                            <div class="stat-box"><span>Pending</span><strong>0</strong></div>
+                            <div class="stat-box"><span>Rejected</span><strong>0</strong></div>
+                        </div>
+                    </div>
                     
                     <!-- Add Event Panel -->
                     <div class="admin-panel">
@@ -43,6 +60,14 @@
                             Add New Event
                         </h3>
                         <div class="admin-form" id="addEventBox">
+                            <select id="category" aria-label="Event type">
+                                <option value="">Select Event Type</option>
+                                <option value="movies">Movies</option>
+                                <option value="music">Music</option>
+                                <option value="sports">Sports</option>
+                                <option value="tech">Tech</option>
+                                <option value="hackathons">Hackathons</option>
+                            </select>
                             <input type="text" id="title" placeholder="Event Title">
                             <input type="date" id="date">
                             <input type="text" id="location" placeholder="Location">
@@ -65,11 +90,19 @@
                     </div>
                 </aside>
             </div>
+
+            <!-- User Booking History -->
+            <section class="user-bookings-section" id="userBookingsSection" style="display: none;">
+                <h2>My Bookings</h2>
+                <div class="booking-history-list" id="myBookings">
+                    <p class="no-requests">No bookings yet</p>
+                </div>
+            </section>
         </main>
 
         <!-- Footer -->
         <footer class="dashboard-footer">
-            &copy; 2026 EventFlow &middot; Built by Team Rohith
+            &copy; 2026 EventFlow &middot; Built by Team Event Flow
         </footer>
     </div>
 

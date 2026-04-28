@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body
+from fastapi import BackgroundTasks, FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
@@ -12,6 +12,14 @@ app = FastAPI()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
+EVENT_CATEGORIES = {"movies", "music", "sports", "tech", "hackathons"}
+EVENT_CATEGORY_LABELS = {
+    "movies": "Movies",
+    "music": "Music",
+    "sports": "Sports",
+    "tech": "Tech",
+    "hackathons": "Hackathons",
+}
 
 # ================= DB =================
 def get_db():
@@ -21,6 +29,43 @@ def get_db():
         password="ROHITH@2006",
         database="event_db"
     )
+
+def ensure_event_columns():
+    db = get_db()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+        AND TABLE_NAME = 'events'
+    """)
+    columns = {row[0] for row in cursor.fetchall()}
+
+    if "category" not in columns:
+        cursor.execute(
+            "ALTER TABLE events ADD COLUMN category VARCHAR(50) NOT NULL DEFAULT 'movies'"
+        )
+        db.commit()
+
+    if "available_seats" not in columns:
+        cursor.execute("ALTER TABLE events ADD COLUMN available_seats INT")
+        db.commit()
+
+    cursor.execute("""
+        UPDATE events e
+        SET available_seats = GREATEST(
+            e.seats - (
+                SELECT COALESCE(SUM(b.approved_seats), 0)
+                FROM bookings b
+                WHERE b.event_id = e.id AND b.status = 'approved'
+            ),
+            0
+        )
+    """)
+    db.commit()
+
+    db.close()
 
 # ================= EMAIL =================
 def send_email(to_email, subject, message):
@@ -33,15 +78,30 @@ def send_email(to_email, subject, message):
     msg["To"] = to_email
 
     try:
-        server = smtplib.SMTP("smtp.gmail.com", 587)
-        server.starttls()
-        server.login(sender_email, app_password)
-        server.send_message(msg)
-        server.quit()
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+            server.starttls()
+            server.login(sender_email, app_password)
+            server.send_message(msg)
+        return True
     except Exception as e:
         print("Email error:", e)
+        return False
+
+def get_event_category_label(category):
+    category_id = (category or "movies").strip().lower()
+    return EVENT_CATEGORY_LABELS.get(category_id, category_id.title())
 
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+@app.on_event("startup")
+def startup():
+    ensure_event_columns()
+
+def frontend_page(filename):
+    return FileResponse(
+        os.path.join(FRONTEND_DIR, filename),
+        headers={"Cache-Control": "no-store"},
+    )
 
 # ================= MODELS =================
 class User(BaseModel):
@@ -58,6 +118,7 @@ class Event(BaseModel):
     date: date
     location: str
     seats: int
+    category: str
 
 class Booking(BaseModel):
     user_email: EmailStr
@@ -67,15 +128,15 @@ class Booking(BaseModel):
 # ================= ROUTES =================
 @app.get("/")
 def home():
-    return FileResponse(os.path.join(FRONTEND_DIR, "login.html"))
+    return frontend_page("login.html")
 
 @app.get("/register_page")
 def register_page():
-    return FileResponse(os.path.join(FRONTEND_DIR, "register.html"))
+    return frontend_page("register.html")
 
 @app.get("/events_page")
 def events_page():
-    return FileResponse(os.path.join(FRONTEND_DIR, "events.html"))
+    return frontend_page("events.html")
 
 # ================= AUTH =================
 @app.post("/register")
@@ -126,12 +187,18 @@ def login(user: LoginUser):
 # ================= EVENTS =================
 @app.post("/add_event")
 def add_event(event: Event):
+    category = event.category.strip().lower()
+    if category not in EVENT_CATEGORIES:
+        return {"error": "Please select a valid event type"}
+    if event.seats <= 0:
+        return {"error": "Seats must be greater than 0"}
+
     db = get_db()
     cursor = db.cursor()
 
     cursor.execute(
-        "INSERT INTO events (title, date, location, seats) VALUES (%s,%s,%s,%s)",
-        (event.title, event.date, event.location, event.seats)
+        "INSERT INTO events (title, date, location, seats, category, available_seats) VALUES (%s,%s,%s,%s,%s,%s)",
+        (event.title, event.date, event.location, event.seats, category, event.seats)
     )
 
     db.commit()
@@ -151,11 +218,11 @@ def get_events():
         e.date,
         e.location,
         e.seats,
-        IFNULL(SUM(CASE WHEN b.status='approved' THEN b.approved_seats ELSE 0 END),0) AS booked_seats,
-        (e.seats - IFNULL(SUM(CASE WHEN b.status='approved' THEN b.approved_seats ELSE 0 END),0)) AS available_seats
+        COALESCE(e.category, 'movies') AS category,
+        GREATEST(e.seats - COALESCE(e.available_seats, e.seats), 0) AS booked_seats,
+        COALESCE(e.available_seats, e.seats) AS available_seats
     FROM events e
-    LEFT JOIN bookings b ON e.id = b.event_id
-    GROUP BY e.id
+    ORDER BY e.date ASC
     """
 
     cursor.execute(query)
@@ -187,17 +254,18 @@ def book_event(booking: Booking):
     cursor = db.cursor()
     user_email = booking.user_email.strip().lower()
 
-    cursor.execute("""
-        SELECT 
-            e.seats - IFNULL(SUM(b.approved_seats),0)
-        FROM events e
-        LEFT JOIN bookings b ON e.id=b.event_id AND b.status='approved'
-        WHERE e.id=%s
-        GROUP BY e.id
-    """, (booking.event_id,))
+    cursor.execute("SELECT available_seats FROM events WHERE id=%s", (booking.event_id,))
 
     result = cursor.fetchone()
-    available = result[0] if result else 0
+    if not result:
+        db.close()
+        return {"error": "Event not found"}
+
+    available = result[0] or 0
+
+    if booking.seats <= 0:
+        db.close()
+        return {"error": "Please enter valid number of seats"}
 
     if booking.seats > available:
         db.close()
@@ -212,6 +280,23 @@ def book_event(booking: Booking):
     db.close()
 
     return {"message": "Booking pending"}
+
+@app.get("/my_bookings")
+def get_my_bookings(email: EmailStr):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT e.title, b.seats, b.approved_seats, b.status, b.booking_date
+        FROM bookings b
+        JOIN events e ON b.event_id = e.id
+        WHERE b.user_email = %s
+        ORDER BY b.booking_date DESC, b.id DESC
+    """, (email.strip().lower(),))
+
+    data = cursor.fetchall()
+    db.close()
+    return data
 
 @app.get("/bookings")
 def get_bookings():
@@ -229,16 +314,35 @@ def get_bookings():
     return data
 
 # ================= ADMIN =================
-@app.put("/approve_booking/{booking_id}")
-def approve_booking(booking_id: int, approved_seats: int = Body(...)):
+@app.get("/admin_stats")
+def admin_stats():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("""
-        SELECT b.*, e.title AS event_name, e.seats AS event_seats
+        SELECT 
+            COUNT(*) AS total,
+            COALESCE(SUM(status='approved'), 0) AS approved,
+            COALESCE(SUM(status='pending'), 0) AS pending,
+            COALESCE(SUM(status='rejected'), 0) AS rejected
+        FROM bookings
+    """)
+
+    data = cursor.fetchone()
+    db.close()
+    return data
+
+@app.put("/approve_booking/{booking_id}")
+def approve_booking(booking_id: int, background_tasks: BackgroundTasks):
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute("""
+        SELECT b.*, e.title AS event_name, e.available_seats, COALESCE(e.category, 'movies') AS event_category
         FROM bookings b
         JOIN events e ON b.event_id = e.id
         WHERE b.id=%s
+        FOR UPDATE
     """, (booking_id,))
     booking = cursor.fetchone()
 
@@ -250,21 +354,8 @@ def approve_booking(booking_id: int, approved_seats: int = Body(...)):
         db.close()
         return {"error": "Booking already processed"}
 
-    if approved_seats < 0 or approved_seats > booking["seats"]:
-        db.close()
-        return {"error": "Approved seats must be between 0 and requested seats"}
-
-    cursor.execute("""
-        SELECT IFNULL(SUM(approved_seats), 0) AS booked_seats
-        FROM bookings
-        WHERE event_id=%s AND status='approved' AND id<>%s
-    """, (booking["event_id"], booking_id))
-    booked = cursor.fetchone()["booked_seats"]
-    available = booking["event_seats"] - booked
-
-    if approved_seats > available:
-        db.close()
-        return {"error": f"Only {available} seats available to approve"}
+    available = booking["available_seats"] or 0
+    approved_seats = min(booking["seats"], available)
 
     rejected_seats = booking["seats"] - approved_seats
     available_after_approval = available - approved_seats
@@ -274,8 +365,14 @@ def approve_booking(booking_id: int, approved_seats: int = Body(...)):
         "UPDATE bookings SET approved_seats=%s, status=%s WHERE id=%s",
         (approved_seats, status, booking_id)
     )
+    cursor.execute(
+        "UPDATE events SET available_seats=%s WHERE id=%s",
+        (available_after_approval, booking["event_id"])
+    )
 
     db.commit()
+
+    event_category_label = get_event_category_label(booking["event_category"])
 
     subject = "EventFlow - Booking Approved"
     if rejected_seats:
@@ -289,7 +386,8 @@ def approve_booking(booking_id: int, approved_seats: int = Body(...)):
     if approved_seats == 0:
         decision_note = "We regret that we could not confirm seats for this request because the event is currently at capacity."
 
-    send_email(
+    background_tasks.add_task(
+        send_email,
         booking["user_email"],
         subject,
         f"""
@@ -302,6 +400,7 @@ Thank you for choosing EventFlow for your event experience. Your booking request
 Booking Status
 --------------
 Event: {booking['event_name']}
+Event Type: {event_category_label}
 Seats Requested: {booking['seats']}
 Seats Confirmed: {approved_seats}
 Seats Not Available: {rejected_seats}
@@ -311,33 +410,29 @@ Seats Not Available: {rejected_seats}
 Please keep this confirmation for your records. Our team looks forward to giving you a smooth and well-managed event experience.
 
 With regards,
-Team Rohith
+Team Event Flow
 EventFlow
 
 Premium Event Booking Platform
 """
     )
 
-    if available_after_approval == 0:
-        cursor.execute("DELETE FROM bookings WHERE event_id=%s", (booking["event_id"],))
-        cursor.execute("DELETE FROM events WHERE id=%s", (booking["event_id"],))
-        db.commit()
-        db.close()
-        return {"message": f"{approved_seats} approved, {rejected_seats} rejected. Event is full and was deleted"}
-
     db.close()
+    if available_after_approval == 0:
+        return {"message": f"{approved_seats} approved, {rejected_seats} rejected. Event is sold out"}
     return {"message": f"{approved_seats} approved, {rejected_seats} rejected"}
 
 @app.put("/reject_booking/{booking_id}")
-def reject_booking(booking_id: int):
+def reject_booking(booking_id: int, background_tasks: BackgroundTasks):
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
     cursor.execute("""
-        SELECT b.*, e.title AS event_name
+        SELECT b.*, e.title AS event_name, COALESCE(e.category, 'movies') AS event_category
         FROM bookings b
         JOIN events e ON b.event_id = e.id
         WHERE b.id=%s
+        FOR UPDATE
     """, (booking_id,))
     booking = cursor.fetchone()
 
@@ -355,8 +450,10 @@ def reject_booking(booking_id: int):
     )
 
     db.commit()
+    event_category_label = get_event_category_label(booking["event_category"])
 
-    send_email(
+    background_tasks.add_task(
+        send_email,
         booking["user_email"],
         "EventFlow - Booking Rejected",
         f"""
@@ -369,6 +466,7 @@ Thank you for showing interest in "{booking['event_name']}". After reviewing the
 Booking Status
 --------------
 Event: {booking['event_name']}
+Event Type: {event_category_label}
 Seats Requested: {booking['seats']}
 Seats Confirmed: 0
 Seats Not Available: {booking['seats']}
@@ -376,7 +474,7 @@ Seats Not Available: {booking['seats']}
 This happened because the requested seats are no longer available. We appreciate your understanding and hope to welcome you to another EventFlow event soon.
 
 With regards,
-Team Rohith
+Team Event Flow
 EventFlow
 
 Premium Event Booking Platform
