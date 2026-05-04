@@ -221,13 +221,21 @@ function loadBookingRequests() {
 
             hasData = true;
 
+            const seatsToApproveMax = Math.min(b.seats, Number(b.available_seats || 0));
+            const approvePlaceholder = seatsToApproveMax > 0 ? `0 - ${seatsToApproveMax}` : "0";
+
             bookingHTML += `
             <div class="booking-request-card">
                 <div class="booking-request-info">
                     <p><strong>User:</strong> ${escapeHtml(b.user_email)}</p>
                     <p><strong>Event:</strong> ${escapeHtml(b.event_name)}</p>
                     <p><strong>Seats Requested:</strong> ${b.seats}</p>
-                    <p><strong>Approval:</strong> Current available seats will be confirmed automatically.</p>
+                    <p><strong>Available Seats:</strong> ${b.available_seats ?? 0}</p>
+                    <p><strong>Approval:</strong> Enter how many seats to confirm; remaining seats will be rejected automatically.</p>
+                </div>
+                <div class="seat-decision-grid">
+                    <label for="approve_${b.id}">Seats to approve</label>
+                    <input type="number" id="approve_${b.id}" min="0" max="${seatsToApproveMax}" placeholder="${approvePlaceholder}">
                 </div>
                 <div class="booking-actions">
                     <button class="btn btn-success" onclick="approve(${b.id})">
@@ -420,18 +428,39 @@ function deleteEvent(id) {
 // APPROVE BOOKING
 // =====================
 function approve(id) {
+    const input = document.getElementById(`approve_${id}`);
+    let body = {};
+
+    if (input && input.value !== "") {
+        const approvedSeats = parseInt(input.value, 10);
+        if (Number.isNaN(approvedSeats) || approvedSeats < 0) {
+            alert("Please enter a valid number of seats to approve.");
+            return;
+        }
+        body.approved_seats = approvedSeats;
+    }
+
     fetch(`/approve_booking/${id}`, {
-        method: "PUT"
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
     })
-    .then(res => res.json())
+    .then(async res => {
+        const data = await res.json();
+        if (!res.ok) {
+            const errorDetail = data.detail ? (Array.isArray(data.detail) ? data.detail.map(d => d.msg).join('; ') : data.detail) : data.message || data.error;
+            throw new Error(errorDetail || 'Approval failed');
+        }
+        return data;
+    })
     .then(data => {
-        alert(data.message || data.error);
+        alert(data.message || 'Booking processed');
         loadEvents();
         loadAdminStats();
     })
     .catch(err => {
         console.error(err);
-        alert("Server error");
+        alert(err.message || 'Server error');
     });
 }
 
